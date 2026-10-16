@@ -1,0 +1,110 @@
+name: CI
+# Correctness checks only. No benchmark is ever run here: timings from shared GitHub-hosted
+# runners are not comparable with the curated example run and must not be presented as such.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    name: Engine (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.0"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Install the engine and dev tools from uv.lock (no Streamlit)
+        run: uv sync --locked --no-group dashboard
+      - name: Ruff lint
+        run: uv run --no-sync ruff check
+      - name: Ruff format check
+        run: uv run --no-sync ruff format --check
+      - name: Tests (fast suite; dashboard tests skip without Streamlit)
+        run: uv run --no-sync pytest
+      - name: CLI entry point is installed and responds
+        run: |
+          uv run --no-sync sdplab --help
+          uv run --no-sync python -m sdplab --version
+          uv run --no-sync sdplab info
+      - name: Committed example run is internally consistent (check-run)
+        run: |
+          set -eu
+          found=0
+          for run_dir in results/examples/*/; do
+            uv run --no-sync sdplab check-run --run "$run_dir"
+            found=1
+          done
+          test "$found" = 1 || { echo "no example run found under results/examples"; exit 1; }
+
+  floors:
+    name: Declared dependency floors (Python 3.12)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.0"
+          python-version: "3.12"
+          enable-cache: true
+      - name: Tests against the lowest declared numpy/matplotlib (wheels only; does not modify uv.lock)
+        run: uv run --isolated --no-group dashboard --no-build --resolution lowest-direct pytest
+
+  dashboard:
+    name: Dashboard (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.0"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Install engine, dev tools and Streamlit from uv.lock
+        run: uv sync --locked
+      - name: Dashboard tests (must run, not skip)
+        run: uv run --no-sync pytest -rs tests/test_dashboard_data.py tests/test_dashboard_app.py
+      - name: Start the app on localhost and check its health endpoint
+        run: |
+          set -eu
+          uv run --no-sync streamlit run streamlit_app.py \
+            --server.address 127.0.0.1 --server.port 8501 --server.headless true \
+            > streamlit.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health | grep -qx ok; then
+              echo "dashboard healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "dashboard did not become healthy; server log:"
+          cat streamlit.log
+          exit 1
