@@ -1,0 +1,21 @@
+# A small, quick configuration for a first local run (a couple of minutes at most).
+# Every key not listed here takes its documented default; unknown keys are rejected.
+config_schema_version = 1
+
+[dataset]
+seed = 12345
+sizes = [10000, 100000]
+data_dir = "data/generated"
+
+[trials]
+warmup_rounds = 1
+measured_rounds = 3
+timeout_s = 120
+
+[environment]
+# "single" pins OMP/OPENBLAS/MKL/NUMEXPR_NUM_THREADS to 1 in each worker, so process CPU time is
+# not inflated by spinning worker threads. The default, "inherit", leaves the environment alone.
+thread_env = "single"
+
+[output]
+results_dir = "results"

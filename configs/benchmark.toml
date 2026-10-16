@@ -1,0 +1,33 @@
+# The documented default benchmark: 10^4, 10^5 and 10^6 rows, 2 warm-up and 7 measured rounds.
+# Equivalent to omitting every key except config_schema_version.
+config_schema_version = 1
+
+[dataset]
+seed = 12345
+sizes = [10000, 100000, 1000000]
+data_dir = "data/generated"
+
+[formats]
+enabled = ["csv", "npy", "npz", "npz_compressed"]
+
+[workload]
+pt_cut = 20.0
+eta_cut = 2.4
+operations = ["write", "load", "preprocess", "load_preprocess"]
+
+[trials]
+warmup_rounds = 2
+measured_rounds = 7
+order_seed = 777
+fsync = false
+timeout_s = 600
+
+[noise]
+outlier_factor = 3.0
+max_load_per_core = 0.5
+
+[environment]
+thread_env = "inherit"
+
+[output]
+results_dir = "results"

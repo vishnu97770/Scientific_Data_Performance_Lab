@@ -1,1 +1,26 @@
-.claude/
+# Local Claude Code settings are machine-specific (absolute paths), never tracked.
+.claude/settings.local.json
+.claude/cache/
+.claude/*.local.*
+.env
+.env.*
+*.pem
+*.key
+
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Generated datasets and reproducible benchmark outputs (tracked examples/.gitkeep stay allowed)
+data/generated/*
+!data/generated/.gitkeep
+results/raw/*
+!results/raw/.gitkeep
+results/plots/*
+!results/plots/.gitkeep
+results/reports/*
+!results/reports/.gitkeep

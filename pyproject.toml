@@ -1,0 +1,51 @@
+[project]
+name = "sdplab"
+version = "0.1.0"
+description = "Reproducible benchmark of CSV vs NumPy .npy/.npz loading"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=2.1",          # first release with cp313 wheels; 2.0 cannot be installed on Python 3.13
+  "matplotlib>=3.10.8",  # lowest version proven to import under filterwarnings=error
+]
+
+[project.scripts]
+sdplab = "sdplab.cli:main"
+
+[dependency-groups]
+dashboard = [
+    "streamlit>=1.66,<2",
+]
+dev = [
+  "pytest>=9.1",
+  "ruff>=0.17,<0.18",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv]
+required-version = ">=0.13,<0.14"
+# `uv sync` installs the dashboard group too (Streamlit Community Cloud syncs from uv.lock).
+# Engine-only environment: `uv sync --no-group dashboard`.
+default-groups = ["dev", "dashboard"]
+
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["tests"]
+addopts = ["-ra", "-m", "not slow"]
+markers = ["slow: large datasets (10^6 rows); run explicitly with -m slow"]
+strict = true
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "NPY", "PT", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Prose strings and table rows in the generated markdown report are clearer unwrapped.
+"src/sdplab/report.py" = ["E501"]
+"src/sdplab/dashboard/*.py" = ["E501"]  # presentation strings

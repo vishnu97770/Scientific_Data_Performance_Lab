@@ -99,3 +99,51 @@ These were **not** confirmed by the fetched primary pages and must not be stated
 | Compression | None | None | None | DEFLATE |
 | Partial/column read | Not in MVP | mmap possible (not in MVP) | By member (not in MVP) | By member (not in MVP) |
 | Portability | Universal | NumPy-centric (spec documented) | NumPy-centric | NumPy-centric |
+
+---
+
+## 7. Local experiments (2026-10-13) — observations, not sourced facts
+
+Environment: Ubuntu, kernel 7.0.0-38-generic, CPython 3.13.5, NumPy 2.1.3, one laptop. Scripts were run from a scratch directory outside the repo; they are described here, not shipped. These are **single-machine observations**; they are not benchmark results and must not be quoted as such.
+
+### 7.1 `ru_maxrss` across `subprocess` launch (supports ADR-005 amendment)
+
+A parent process imported NumPy, then spawned a child (`sys.executable`, fresh interpreter) that imported NumPy and printed `getrusage(RUSAGE_SELF).ru_maxrss`, `/proc/self/status` `VmHWM`, and `VmRSS` after the import.
+
+| Case | parent `ru_maxrss` (KiB) | child `ru_maxrss` (KiB) | child `VmHWM` (KiB) |
+|---|---|---|---|
+| small parent | 46,632 | 46,636 | 46,956 |
+| parent had touched ~300 MiB | 354,024 | **354,024** | 46,940 |
+| after the parent freed it (peak persists) | 354,024 | **354,024** | 46,932 |
+
+Observation: the child's `ru_maxrss` equalled the parent's peak at launch even though the child itself stayed near 47 MB, whereas the child's `VmHWM` stayed independent. Two further independent probes during research (architecture and stack researchers) saw the same effect. The kernel mechanism (the high-water mark surviving exec) was **not** verified against current kernel source; the supporting reference is a 2008 LKML thread.
+
+Units: Linux `getrusage(2)` documents `ru_maxrss` in KiB; `/proc/self/status` reports `kB` (KiB). Limitations: Linux-only; `VmHWM` is also process-wide and includes interpreter and imports; a point-sample `VmRSS` baseline cannot separate allocations made before the timed region; neither value measures allocator internals or page cache. Consequently any difference between them is an *estimate*.
+
+### 7.2 Dependency resolution with `requires-python >=3.12`
+
+A throwaway project (outside the repo) with `requires-python = ">=3.12"`, `numpy>=2.0`, `matplotlib>=3.9`, dev group `pytest`, `ruff>=0.17,<0.18` ran `uv lock` (uv 0.13.0) successfully: 18 packages resolved, a single NumPy **2.5.4**, matplotlib 3.11.2, pytest 9.1.1, ruff 0.17.0, no resolution fork. Not verified: execution on an installed Python 3.12 (3.12 is not installed locally; uv can download it), the declared floors `numpy>=2.0` / `matplotlib>=3.9` at their lowest versions (a `--resolution lowest-direct` check is planned), and NumPy 2.4.x (no longer relevant after the Python floor change).
+
+### 7.3 Researcher-reported observations (not independently re-run)
+
+CSV `%.17g` + `np.loadtxt` bit-exact on an edge set and ~200k random bit patterns (NumPy 2.1.3 and 2.5.4); `-0.0` preserved, NaN payload lost; `np.array_equal` treats `0.0` and `-0.0` as equal; `.npz` members re-read on each access; `/tmp` is tmpfs on this machine. See `docs/research/PITFALLS.md`. These are leads for Phase 2 tests, not verified results.
+
+### 7.4 `process_time_ns` with inherited thread settings (observation, 2026-10-14)
+
+Interactive probe, same machine (12 logical cores), fresh worker process per call, 20,000 rows, run once per cell (not a benchmark; the probe script was not kept):
+
+| operation | `thread_env` | elapsed (ms) | process CPU time (ms) |
+|---|---|---|---|
+| `npy` load | inherit | 0.51 | 0.51 |
+| `npz_compressed` load | inherit | 7.91 | 94.97 |
+| `npy` load + preprocess | inherit | 1.04 | 12.36 |
+| preprocess (in memory) | inherit | 0.50 | 11.63 |
+| `npz_compressed` load | single | 6.34 | 6.34 |
+| `npy` load + preprocess | single | 0.91 | 0.91 |
+| preprocess (in memory) | single | 0.38 | 0.38 |
+
+With `OMP/OPENBLAS/MKL/NUMEXPR_NUM_THREADS=1` the CPU time equals the elapsed time; without it the process-wide CPU time was about 12x elapsed for some operations (about the core count), consistent with spinning worker threads. The source of the threads was not identified. Consequence: `process_time_ns` is process-wide CPU time and is not a per-operation efficiency measure unless threads are pinned; `elapsed_ns` is the compared quantity.
+
+### 7.5 Lazy-import cost inside the timed region (observation, 2026-10-14)
+
+First smoke run, before the worker primed imports: `.npz` load of 2,000 rows took about 3.1 ms in a fresh worker versus about 0.18 ms for `.npy`. After the worker runs the operation once on an 8-row array before the timer (ADR-018): `.npz` load about 0.33-0.36 ms, `.npy` about 0.15 ms, CSV about 2.0 ms (3 calls each, one machine). The earlier gap was dominated by lazy module import (`zipfile`), not data work.
