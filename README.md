@@ -4,7 +4,7 @@ A small, reproducible benchmark that measures how storage format, parsing, compr
 
 > **Independent educational project.** It is not affiliated with, endorsed by, or an official project of CERN or CERN-HSF. The data is synthetic and HEP-inspired.
 
-**Status:** the benchmark CLI and the dashboard are implemented and tested locally (Python 3.12 and 3.13). One real example run is committed under `results/examples/`. The GitHub Actions workflow exists but has **not** been run on GitHub, and the dashboard is **not deployed** (see [Live demo and source](#live-demo-and-source)).
+**Status:** the benchmark CLI and the dashboard are implemented and tested locally (Python 3.12 and 3.13). One real example run is committed under `results/examples/`. The GitHub Actions workflow passed on GitHub for commit `52308dc` (all 5 jobs), and the dashboard is deployed on Streamlit Community Cloud (see [Live demo and source](#live-demo-and-source)).
 
 ## Contents
 
@@ -31,9 +31,9 @@ A small, reproducible benchmark that measures how storage format, parsing, compr
 ## Live demo and source
 
 - **Source:** <https://github.com/vishnu97770/Scientific_Data_Performance_Lab>
-- **Live demo:** *not deployed yet.* The app is prepared for Streamlit Community Cloud ([docs/deployment.md](docs/deployment.md)); a URL will be added here only after the deployment has been created and checked.
+- **Live demo:** <https://scientificdataperformancelab-roqu95p6pjugyri9fg7xwd.streamlit.app/> (Streamlit Community Cloud; read-only view of the committed example run, deployment details in [docs/deployment.md](docs/deployment.md)).
 
-Until then, run the dashboard locally ([Launching the dashboard](#launching-the-dashboard)).
+You can also run the dashboard locally ([Launching the dashboard](#launching-the-dashboard)).
 
 ## Why this project exists
 
@@ -238,15 +238,15 @@ uv run --isolated --no-group dashboard --no-build --resolution lowest-direct pyt
 uv lock --check
 ```
 
-The suite covers the dataset, all loaders (round trips, edge values, malformed input), preprocessing, validation, configuration, the runner and worker, result files, analysis and report, the CLI end to end, documentation links, the README results block, repository hygiene, and the dashboard (discovery safety, data loading, page rendering with Streamlit's `AppTest`). Tests never assert on timing values. Dashboard tests skip when Streamlit is not installed. CI (`.github/workflows/ci.yml`: engine, dependency-floor and dashboard jobs on Python 3.12 and 3.13, plus `check-run` of the example) is configured but has not yet run on GitHub; it never runs benchmarks. Details and the equivalent local commands: [docs/development.md](docs/development.md#ci). What was run and when is recorded in [docs/verification-log.md](docs/verification-log.md); developer notes are in [docs/development.md](docs/development.md).
+The suite covers the dataset, all loaders (round trips, edge values, malformed input), preprocessing, validation, configuration, the runner and worker, result files, analysis and report, the CLI end to end, documentation links, the README results block, repository hygiene, and the dashboard (discovery safety, data loading, page rendering with Streamlit's `AppTest`). Tests never assert on timing values. Dashboard tests skip when Streamlit is not installed. CI (`.github/workflows/ci.yml`: engine, dependency-floor and dashboard jobs on Python 3.12 and 3.13, plus `check-run` of the example) passed on GitHub for commit `52308dc`; it never runs benchmarks. Details and the equivalent local commands: [docs/development.md](docs/development.md#ci). What was run and when is recorded in [docs/verification-log.md](docs/verification-log.md); developer notes are in [docs/development.md](docs/development.md).
 
 ## Deployment
 
-The dashboard is prepared for Streamlit Community Cloud (main file `streamlit_app.py`, dependencies from `uv.lock`, config in `.streamlit/config.toml`, committed example data). It has **not** been deployed. Steps, the unverified assumption about uv dependency groups and its fallback, and post-deployment checks are in [docs/deployment.md](docs/deployment.md). Platform reference: <https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app>.
+The dashboard is prepared for Streamlit Community Cloud (main file `streamlit_app.py`, dependencies from `uv.lock`, config in `.streamlit/config.toml`, committed example data). It is deployed at <https://scientificdataperformancelab-roqu95p6pjugyri9fg7xwd.streamlit.app/>. Steps, the dependency-group note and its fallback, and post-deployment checks are in [docs/deployment.md](docs/deployment.md). Platform reference: <https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app>.
 
 ## Limitations
 
-- **Hosted CI has not been run.** The workflow file is checked by a test and its steps were run locally on Python 3.12 and 3.13.
+- **Hosted CI covers correctness only.** It passed on GitHub for commit `52308dc`; it never runs benchmarks, so it says nothing about performance.
 - **One machine, one run.** The committed example is a single run on a laptop with the `powersave` governor on AC power, a warm page cache and no cold-cache mode. It is evidence for that setup only.
 - **Imports are excluded from timings.** Each worker runs the operation once on an 8-row array before the timer so that lazy imports (for example `zipfile` for `.npz`) are not measured. A one-shot command-line user would still pay those once. (ADR-018; observation in `docs/research/research-notes.md` section 7.5.)
 - **`process_time_ns` is process-wide CPU time across all threads.** With inherited thread settings, worker threads can spin: in an interactive probe an operation of about 8 ms showed about 95 ms of CPU time, while with `thread_env = "single"` both agreed (`docs/research/research-notes.md` section 7.4; one machine, not a benchmark). Use `elapsed_ns` for comparisons and `thread_env = "single"` when you want CPU time to be meaningful.
@@ -274,7 +274,7 @@ Only after the current scope stays reliable: further formats (JSON, HDF5, Parque
 
 ## License and project status
 
-**No license has been chosen yet**, so no permission to reuse the code is granted beyond what applies by default. A license will be added by the repository owner. Hosted CI has not run yet and the dashboard is not deployed.
+**No license has been chosen yet**, so no permission to reuse the code is granted beyond what applies by default. A license will be added by the repository owner. Hosted CI passed for commit `52308dc`; the dashboard is deployed (see above).
 
 ## References
 

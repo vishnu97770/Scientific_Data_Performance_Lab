@@ -1,6 +1,6 @@
 # Deployment (Streamlit Community Cloud)
 
-**Status: prepared, not deployed.** No public URL exists yet; none is claimed anywhere in this repository. Deployment needs the repository to be pushed to GitHub and a Streamlit Community Cloud sign-in by the repository owner.
+**Status: deployed** at <https://scientificdataperformancelab-roqu95p6pjugyri9fg7xwd.streamlit.app/> (owner-created; opened in fresh browser contexts on 2026-10-16 and all five pages rendered without errors). Which commit the host is running and its Python version are visible only in the Community Cloud account, so they are not verified here.
 
 The app is a read-only viewer of the committed example run (`results/examples/`). It cannot run benchmarks, accept uploads or read arbitrary paths, so a public host exposes nothing but the recorded results.
 
@@ -26,9 +26,9 @@ Optional environment variables (Advanced settings, *Secrets* are not needed): `S
 
 Reference: <https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app>.
 
-## Unverified assumption and fallback
+## Dependency groups: note and fallback
 
-`pyproject.toml` declares `[tool.uv] default-groups = ["dev", "dashboard"]`, so `uv sync` (and, presumably, the host's lock-based install) installs Streamlit. Whether Community Cloud honours uv default groups has **not** been verified, and the project itself is installed as an editable package only if the host does so. If the build log shows `ModuleNotFoundError: streamlit` or `sdplab`, use one of these fixes and redeploy:
+The deployment started and rendered, so the host installed Streamlit and the package. `pyproject.toml` declares `[tool.uv] default-groups = ["dev", "dashboard"]`, so `uv sync` (and, presumably, the host's lock-based install) installs Streamlit. The exact install mechanism is not visible from outside. If a future build log shows `ModuleNotFoundError: streamlit` or `sdplab`, use one of these fixes and redeploy:
 
 - move `streamlit` from the `dashboard` group into `[project] dependencies` and run `uv lock` (simplest; makes Streamlit a core dependency of the package), or
 - remove `uv.lock` from the deployed branch and add a root `requirements.txt` with `streamlit>=1.66,<2` and `-e .` (the host's detection order then falls through to it; this loses the pinned versions).

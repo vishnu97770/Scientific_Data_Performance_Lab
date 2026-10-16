@@ -589,7 +589,7 @@ def main(results_root: Path | None = None, repo_url: str | None = None) -> None:
         page_title="SDPLab - Scientific Data Performance Lab",
         page_icon=":material/analytics:",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="auto",
     )
     root = results_root or default_results_root()
     st.session_state["repo_url"] = repo_url or os.environ.get(REPO_ENV) or DEFAULT_REPO_URL
